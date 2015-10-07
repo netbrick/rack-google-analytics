@@ -33,7 +33,8 @@ module Rack
         env["rack.session"][EVENT_TRACKING_KEY] = env[EVENT_TRACKING_KEY]
       end
 
-      @options[:tracker] = expand_tracker(env, @options[:tracker])
+      @options[:tracker] = expand_lmbd(env, @options[:tracker])
+      @options[:user_id] = expand_lmbd(env, @options[:user_id])
 
       @body.each { |fragment| response.write inject(fragment) }
       @body.close if @body.respond_to?(:close)
@@ -46,14 +47,14 @@ module Rack
     def html?; @headers['Content-Type'] =~ /html/; end
 
     def inject(response)
-      @tracker_options = { cookieDomain: @options[:domain] }.select{|k,v| v }.to_json
+      @tracker_options = { cookieDomain: @options[:domain], userId: @options[:user_id] }.select{|k,v| v }.to_json
       @template ||= ::ERB.new ::File.read ::File.expand_path("../templates/async.erb",__FILE__)
 
       response.gsub(%r{</head>}, @template.result(binding) + "</head>")
     end
 
-    def expand_tracker(env, tracker)
-      tracker.respond_to?(:call) ? tracker.call(env) : tracker
+    def expand_lmbd(env, lmbd)
+      lmbd.respond_to?(:call) ? lmbd.call(env) : lmbd
     end
 
   end
